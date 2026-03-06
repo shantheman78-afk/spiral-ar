@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPIRAL — Portsmouth Digital Art</title>
+
+  <!-- AR.js + A-Frame -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@100;300;400&family=Cormorant+Garamond:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ── LANDING SCREEN ── */
+    #landing {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: #050a0e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      padding: 2rem;
+      transition: opacity 0.8s ease;
+    }
+
+    #landing.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .helix-anim {
+      width: 80px;
+      height: 80px;
+      position: relative;
+    }
+
+    .helix-anim svg {
+      animation: spinHelix 4s linear infinite;
+    }
+
+    @keyframes spinHelix {
+      from { transform: rotateY(0deg); }
+      to   { transform: rotateY(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50%       { opacity: 1;   transform: scale(1.08); }
+    }
+
+    .logo-mark {
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    .title {
+      font-family: 'Josefin Sans', sans-serif;
+      font-weight: 100;
+      font-size: 3.2rem;
+      letter-spacing: 0.55em;
+      color: #c8f0e8;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 1.1rem;
+      color: #5a9e8a;
+      letter-spacing: 0.1em;
+      text-align: center;
+      max-width: 280px;
+      line-height: 1.6;
+    }
+
+    .divider {
+      width: 40px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #3ecf9e, transparent);
+    }
+
+    .instruction {
+      font-family: 'Josefin Sans', sans-serif;
+      font-weight: 300;
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      color: #2e6e58;
+      text-transform: uppercase;
+      text-align: center;
+      max-width: 260px;
+      line-height: 2;
+    }
+
+    #enter-btn {
+      margin-top: 1rem;
+      font-family: 'Josefin Sans', sans-serif;
+      font-weight: 300;
+      font-size: 0.75rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: #050a0e;
+      background: #3ecf9e;
+      border: none;
+      padding: 1rem 2.5rem;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    #enter-btn:hover {
+      background: #c8f0e8;
+      transform: scale(1.03);
+    }
+
+    /* ── AR SCENE ── */
+    a-scene {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* ── HUD ── */
+    #hud {
+      display: none;
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      font-family: 'Josefin Sans', sans-serif;
+      font-weight: 100;
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      color: rgba(200,240,232,0.7);
+      text-transform: uppercase;
+      text-align: center;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── LANDING ── -->
+  <div id="landing">
+    <div class="logo-mark">
+      <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="36" cy="36" r="34" stroke="#3ecf9e" stroke-width="0.8" opacity="0.4"/>
+        <circle cx="36" cy="36" r="24" stroke="#3ecf9e" stroke-width="0.8" opacity="0.6"/>
+        <!-- fibonacci spiral approximation -->
+        <path d="M36 36 Q50 22 60 36 Q50 50 36 36 Q22 22 12 36 Q22 50 36 36"
+              stroke="#3ecf9e" stroke-width="1.2" fill="none"/>
+        <circle cx="36" cy="36" r="2" fill="#3ecf9e"/>
+      </svg>
+    </div>
+
+    <h1 class="title">Spiral</h1>
+
+    <div class="divider"></div>
+
+    <p class="subtitle">The fountain holds a secret.<br/>You just need to look.</p>
+
+    <p class="instruction">
+      Point your camera at the<br/>
+      marker near the fountain<br/>
+      to reveal what lies beneath
+    </p>
+
+    <button id="enter-btn" onclick="enterAR()">Open Camera</button>
+  </div>
+
+  <!-- ── HUD ── -->
+  <div id="hud">◈ &nbsp; Point at marker to reveal &nbsp; ◈</div>
+
+  <!-- ── AR SCENE ── -->
+  <a-scene
+    embedded
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+    renderer="logarithmicDepthBuffer: true; antialias: true;"
+    vr-mode-ui="enabled: false"
+    style="display:none"
+    id="ar-scene"
+  >
+
+    <!-- DNA Helix marker target -->
+    <a-marker preset="hiro">
+
+      <!-- Base glow -->
+      <a-circle
+        radius="0.6"
+        rotation="-90 0 0"
+        color="#0a2e24"
+        opacity="0.5"
+        position="0 0.01 0"
+      ></a-circle>
+
+      <!-- Helix strand A (rising cylinders) -->
+      <a-entity id="helix-a" position="0 0 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 6000; easing: linear">
+        <a-cylinder color="#3ecf9e" radius="0.03" height="0.15" position="0.18 0.1 0"  opacity="0.9"></a-cylinder>
+        <a-cylinder color="#3ecf9e" radius="0.03" height="0.15" position="0.13 0.4 0.13" opacity="0.9"></a-cylinder>
+        <a-cylinder color="#3ecf9e" radius="0.03" height="0.15" position="0 0.7 0.18" opacity="0.9"></a-cylinder>
+        <a-cylinder color="#3ecf9e" radius="0.03" height="0.15" position="-0.13 1.0 0.13" opacity="0.9"></a-cylinder>
+        <a-cylinder color="#3ecf9e" radius="0.03" height="0.15" position="-0.18 1.3 0" opacity="0.9"></a-cylinder>
+        <a-cylinder color="#3ecf9e" radius="0.03" height="0.15" position="-0.13 1.6 -0.13" opacity="0.9"></a-cylinder>
+        <a-cylinder color="#3ecf9e" radius="0.03" height="0.15" position="0 1.9 -0.18" opacity="0.9"></a-cylinder>
+        <a-cylinder color="#3ecf9e" radius="0.03" height="0.15" position="0.13 2.2 -0.13" opacity="0.9"></a-cylinder>
+      </a-entity>
+
+      <!-- Helix strand B (offset) -->
+      <a-entity id="helix-b" position="0 0 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 6000; easing: linear">
+        <a-cylinder color="#c8f0e8" radius="0.03" height="0.15" position="-0.18 0.1 0"  opacity="0.7"></a-cylinder>
+        <a-cylinder color="#c8f0e8" radius="0.03" height="0.15" position="-0.13 0.4 -0.13" opacity="0.7"></a-cylinder>
+        <a-cylinder color="#c8f0e8" radius="0.03" height="0.15" position="0 0.7 -0.18" opacity="0.7"></a-cylinder>
+        <a-cylinder color="#c8f0e8" radius="0.03" height="0.15" position="0.13 1.0 -0.13" opacity="0.7"></a-cylinder>
+        <a-cylinder color="#c8f0e8" radius="0.03" height="0.15" position="0.18 1.3 0" opacity="0.7"></a-cylinder>
+        <a-cylinder color="#c8f0e8" radius="0.03" height="0.15" position="0.13 1.6 0.13" opacity="0.7"></a-cylinder>
+        <a-cylinder color="#c8f0e8" radius="0.03" height="0.15" position="0 1.9 0.18" opacity="0.7"></a-cylinder>
+        <a-cylinder color="#c8f0e8" radius="0.03" height="0.15" position="-0.13 2.2 0.13" opacity="0.7"></a-cylinder>
+      </a-entity>
+
+      <!-- Base pairs (rungs of the ladder) -->
+      <a-cylinder color="#5a9e8a" radius="0.012" height="0.36" rotation="0 0 90" position="0 0.1 0"  opacity="0.6"></a-cylinder>
+      <a-cylinder color="#5a9e8a" radius="0.012" height="0.36" rotation="0 45 90" position="0 0.4 0" opacity="0.6"></a-cylinder>
+      <a-cylinder color="#5a9e8a" radius="0.012" height="0.36" rotation="0 90 90" position="0 0.7 0" opacity="0.6"></a-cylinder>
+      <a-cylinder color="#5a9e8a" radius="0.012" height="0.36" rotation="0 135 90" position="0 1.0 0" opacity="0.6"></a-cylinder>
+      <a-cylinder color="#5a9e8a" radius="0.012" height="0.36" rotation="0 180 90" position="0 1.3 0" opacity="0.6"></a-cylinder>
+      <a-cylinder color="#5a9e8a" radius="0.012" height="0.36" rotation="0 225 90" position="0 1.6 0" opacity="0.6"></a-cylinder>
+      <a-cylinder color="#5a9e8a" radius="0.012" height="0.36" rotation="0 270 90" position="0 1.9 0" opacity="0.6"></a-cylinder>
+      <a-cylinder color="#5a9e8a" radius="0.012" height="0.36" rotation="0 315 90" position="0 2.2 0" opacity="0.6"></a-cylinder>
+
+      <!-- Glowing top sphere -->
+      <a-sphere
+        color="#3ecf9e"
+        radius="0.08"
+        position="0 2.4 0"
+        opacity="0.9"
+        animation="property: position; from: 0 2.4 0; to: 0 2.6 0; dir: alternate; loop: true; dur: 1800; easing: easeInOutSine"
+        animation__glow="property: opacity; from: 0.5; to: 1; dir: alternate; loop: true; dur: 900"
+      ></a-sphere>
+
+      <!-- Rising particles -->
+      <a-sphere color="#3ecf9e" radius="0.025" position="0.05 0.5 0.05" opacity="0.5"
+        animation="property: position; from: 0.05 0.3 0.05; to: 0.05 2.8 0.05; loop: true; dur: 3000; easing: easeInQuad"
+        animation__fade="property: opacity; from: 0.7; to: 0; loop: true; dur: 3000">
+      </a-sphere>
+      <a-sphere color="#c8f0e8" radius="0.02" position="-0.08 0.2 0" opacity="0.5"
+        animation="property: position; from: -0.08 0.1 0; to: -0.08 2.8 0; loop: true; dur: 4000; easing: easeInQuad; delay: 1000"
+        animation__fade="property: opacity; from: 0.6; to: 0; loop: true; dur: 4000; delay: 1000">
+      </a-sphere>
+
+    </a-marker>
+
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script>
+    function enterAR() {
+      const landing = document.getElementById('landing');
+      const scene   = document.getElementById('ar-scene');
+      const hud     = document.getElementById('hud');
+
+      landing.classList.add('hidden');
+      setTimeout(() => {
+        scene.style.display = 'block';
+        hud.style.display   = 'block';
+      }, 800);
+    }
+  </script>
+</body>
+</html>
